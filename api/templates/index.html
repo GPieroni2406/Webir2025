@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detector de Malezas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .header-info {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      background-color: #3498db;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+
+    .nav-bar {
+      position: fixed;
+      top: 20px;
+      left: 30px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .nav-bar button {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9em;
+      transition: background-color 0.3s;
+    }
+
+    .nav-bar button:hover {
+      background-color: #27ae60;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 100px auto 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h1, h2, h3 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"], input[type="text"] {
+      margin: 10px auto;
+      padding: 10px;
+      font-size: 1em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 80%;
+      max-width: 400px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 10px;
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #preview {
+      margin-top: 20px;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    #result {
+      font-size: 1.1em;
+      margin-top: 20px;
+      color: #2c3e50;
+    }
+
+    #imagenesSugeridas {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 15px;
+    }
+
+    #imagenesSugeridas img {
+      width: 150px;
+      height: auto;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    #imagenesSugeridas img:hover {
+      transform: scale(1.05);
+      border-color: #3498db;
+    }
+
+    hr {
+      margin: 40px 0;
+      border: none;
+      border-top: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-info">WebIR - Facultad de Ingeniería - 2025</div>
+  <div class="nav-bar">
+    <button onclick="mostrarSeccion('detector')">Detector</button>
+    <button onclick="mostrarSeccion('evaluador')">Evaluador</button>
+  </div>
+
+  <div class="container" id="detector">
+    <h1>Detector de Enfermedades en Plantas</h1>
+
+    <p><strong>Buscar imágenes en línea:</strong></p>
+    <input type="text" id="searchInput" placeholder="Ej: planta con enfermedad">
+    <br>
+    <button onclick="buscarImagenes()">Buscar en Google</button>
+    <div id="imagenesSugeridas"></div>
+
+    <hr>
+
+    <p><strong>O subí una imagen manualmente:</strong></p>
+    <input type="file" id="imageInput" accept="image/*">
+    <br>
+    <button onclick="sendImage()">Analizar</button>
+    <br>
+    <img id="preview" src="#" alt="Previsualización">
+
+    <p id="result"></p>
+    <div id="diseases-list"></div>
+  </div>
+
+  <div class="container" id="evaluador" style="display: none;">
+    <h2>Evaluación del Modelo</h2>
+    <p>Subí un archivo CSV con URLs de imágenes y etiquetas (1 = contiene maleza, 0 = no).</p>
+    <input type="file" id="csvInput" accept=".csv">
+    <br>
+    <button onclick="evaluarCSV()">Evaluar</button>
+
+    <div id="metricas" style="margin-top: 20px;"></div>
+  </div>
+
+  <script>
+    function mostrarSeccion(seccion) {
+      document.getElementById('detector').style.display = (seccion === 'detector') ? 'block' : 'none';
+      document.getElementById('evaluador').style.display = (seccion === 'evaluador') ? 'block' : 'none';
+    }
+
+    const input = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+    const result = document.getElementById('result');
+    const sugeridas = document.getElementById('imagenesSugeridas');
+
+    input.onchange = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+          result.innerText = '';
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    async function sendImage() {
+      const file = input.files[0];
+      if (!file) {
+        result.innerText = 'Por favor, seleccioná una imagen primero.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', file);
+      result.innerText = 'Procesando...';
+
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        result.innerText = `Resultado: ${data.result}`;
+        if (data.image_url) {
+          preview.src = data.image_url;
+          preview.style.display = 'block';
+        }
+
+        // Mostrar lista de enfermedades detectadas
+        const diseasesList = document.getElementById('diseases-list');
+        diseasesList.innerHTML = '';
+        if (data.diseases && data.diseases.length > 0) {
+          const ul = document.createElement('ul');
+          ul.style.listStyle = 'none';
+          ul.style.padding = '10px';
+          data.diseases.forEach(disease => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${disease.name}</strong> (Confianza: ${(disease.confidence * 100).toFixed(2)}%)`;
+            li.style.margin = '5px 0';
+            li.style.padding = '8px';
+            li.style.backgroundColor = '#f0f0f0';
+            li.style.borderRadius = '4px';
+            ul.appendChild(li);
+          });
+          diseasesList.appendChild(ul);
+        }
+      } catch (error) {
+        result.innerText = 'Error al procesar la imagen.';
+        console.error(error);
+      }
+    }
+
+    async function buscarImagenes() {
+      const query = document.getElementById('searchInput').value.trim();
+      sugeridas.innerHTML = 'Buscando...';
+
+      const response = await fetch('/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+
+      const data = await response.json();
+      sugeridas.innerHTML = '';
+
+      data.results.forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.onclick = () => {
+          preview.src = url;
+          preview.style.display = 'block';
+          enviarImagenDesdeURL(url);
+        };
+        sugeridas.appendChild(img);
+      });
+    }
+
+    async function enviarImagenDesdeURL(url) {
+      result.innerText = 'Procesando imagen desde URL...';
+
+      try {
+        const response = await fetch('/predict-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await response.json();
+        result.innerText = `Resultado: ${data.result}`;
+      } catch (error) {
+        result.innerText = 'Error al procesar la imagen desde URL.';
+        console.error(error);
+      }
+    }
+
+    async function evaluarCSV() {
+      const input = document.getElementById('csvInput');
+      const file = input.files[0];
+      const metricasDiv = document.getElementById('metricas');
+
+      if (!file) {
+        metricasDiv.innerHTML = 'Por favor, seleccioná un archivo CSV.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      metricasDiv.innerHTML = 'Evaluando...';
+
+      try {
+        const response = await fetch('/evaluate', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          metricasDiv.innerHTML = `Error: ${data.error}`;
+          return;
+        }
+
+        metricasDiv.innerHTML = `
+          <h3>Resultados</h3>
+          <p><strong>Precisión:</strong> ${data.precision.toFixed(2)}</p>
+          <p><strong>Recall:</strong> ${data.recall.toFixed(2)}</p>
+          <p><strong>F1-score:</strong> ${data.f1.toFixed(2)}</p>
+        `;
+      } catch (err) {
+        console.error(err);
+        metricasDiv.innerHTML = 'Hubo un error durante la evaluación.';
+      }
+    }
+  </script>
+</body>
+</html>

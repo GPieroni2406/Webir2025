@@ -1,0 +1,12 @@
+flask
+ultralytics
+pillow
+requests
+opencv-python
+scikit-learn
+pandas
+python-dotenv
+google-search-results --user
+
+Se necesita cuenta de SerpApi https://serpapi.com/manage-api-key
+pip install pandas scikit-learn --user
