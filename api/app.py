@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify, render_template
 from PIL import Image
 import io
@@ -37,12 +36,11 @@ def predict_url():
         img = Image.open(io.BytesIO(response.content)).convert("RGB")
         results = model.predict(img, conf=0.4)[0]
         class_ids = results.boxes.cls.cpu().numpy().astype(int)
-        nombres_detectados = [model.names[cid].lower() for cid in class_ids]
-        hay_plaga = any('maleza' in nombre for nombre in nombres_detectados)
+        hay_plaga = 1 in class_ids
 
         return jsonify({
             'result': 'Se detectó presencia de plaga o maleza' if hay_plaga else 'Planta saludable',
-            'detections': nombres_detectados
+            'detections': [model.names[cid] for cid in class_ids]
         })
 
     except Exception as e:
@@ -73,6 +71,28 @@ def buscar_google():
         return jsonify({'results': urls[:5]})
     except Exception as e:
         return jsonify({'error': 'Búsqueda fallida', 'details': str(e)}), 500
+    
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image uploaded'}), 400
+
+    try:
+        img_bytes = request.files['image'].read()
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        results = model.predict(img, conf=0.4)[0]
+        class_ids = results.boxes.cls.cpu().numpy().astype(int)
+        hay_plaga = 1 in class_ids
+
+        return jsonify({
+            'result': 'Se detectó presencia de plaga o maleza' if hay_plaga else 'Planta saludable',
+            'detections': [model.names[cid] for cid in class_ids]
+        })
+
+    except Exception as e:
+        return jsonify({'error': 'Error al procesar la imagen', 'details': str(e)}), 500
+
 
 @app.route('/evaluate', methods=['POST'])
 def evaluate():
@@ -103,8 +123,7 @@ def evaluate():
             img = Image.open(io.BytesIO(resp.content)).convert("RGB")
             results = model.predict(img, conf=0.4)[0]
             class_ids = results.boxes.cls.cpu().numpy().astype(int)
-            nombres_detectados = [model.names[cid].lower() for cid in class_ids]
-            pred_label = 1 if any('maleza' in n for n in nombres_detectados) else 0
+            pred_label = 1 if 1 in class_ids else 0
         except Exception:
             continue
 
@@ -123,7 +142,6 @@ def evaluate():
         'recall': recall,
         'f1': f1
     })
-
 
 if __name__ == '__main__':
     app.run(debug=True)
