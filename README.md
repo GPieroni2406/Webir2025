@@ -67,6 +67,12 @@ WEBIR2025/
 ├── PPTs.pdf                    # Presentación del proyecto
 └── .gitignore
 ```
+
+
+### Nota
+En caso de que no funcione el CSV, puede deberse a algun link caido. Verificar antes de probar.
+
+
 ## 👥 Autores
 Desarrollado para el curso WebIR - Facultad de Ingeniería - 2025 \
 Autores: Guzman Pieroni, Matias Forcelledo, Juan Ignacio Cabrera
